@@ -105,37 +105,17 @@ struct DepthMapDetailView: View {
     
     private func loadDepthData() {
         DispatchQueue.global(qos: .userInitiated).async {
-            // まず表示用の画像を読み込む
-            if let image = UIImage(contentsOfFile: depthURL.path) {
-                DispatchQueue.main.async {
-                    self.depthImage = image
-                }
-            }
-            
             // TIFFからDepthデータを読み込む
-            loadDepthValuesFromTIFF()
-        }
-    }
-    
-    private func loadDepthValuesFromTIFF() {
-        do {
-            let image = try TIFFReader.read(fromFile: depthURL.path)
-            guard let directory = image.fileDirectories.first else {
-                print("Depth TIFF has no image directory")
-                return
-            }
-            let rasters = try directory.readRasters()
-            
-            // 32-bit float depth in meters, as written by writeDepthMapToTIFFWithLibTIFF
-            let values = (0..<rasters.height).map { y in
-                (0..<rasters.width).map { x in Float(rasters.firstPixelSample(x: x, y: y)) }
+            guard let depth = readDepthTIFF(at: depthURL) else { return }
+            let image = makeDepthImage(depth)
+            let values = stride(from: 0, to: depth.pixels.count, by: depth.width).map {
+                Array(depth.pixels[$0..<$0 + depth.width])
             }
             
             DispatchQueue.main.async {
+                self.depthImage = image
                 self.depthData = values
             }
-        } catch {
-            print("Failed to read depth TIFF: \(error)")
         }
     }
     
@@ -178,6 +158,31 @@ struct DepthMapDetailView: View {
         }
         
         depthValue = depthData[pixelY][pixelX]
+    }
+}
+
+/// Reads a depth TIFF (32-bit float meters, as written by writeDepthMapToTIFFWithLibTIFF).
+/// Don't display these files with UIImage directly: ImageIO maps 0–1 to black–white and
+/// clips everything past 1 m to white.
+func readDepthTIFF(at url: URL) -> PixelCopy<Float32>? {
+    do {
+        let image = try TIFFReader.read(fromFile: url.path)
+        guard let directory = image.fileDirectories.first else {
+            print("Depth TIFF has no image directory")
+            return nil
+        }
+        let rasters = try directory.readRasters()
+        var pixels = [Float32]()
+        pixels.reserveCapacity(rasters.width * rasters.height)
+        for y in 0..<rasters.height {
+            for x in 0..<rasters.width {
+                pixels.append(Float32(rasters.firstPixelSample(x: x, y: y)))
+            }
+        }
+        return PixelCopy(width: rasters.width, height: rasters.height, pixels: pixels)
+    } catch {
+        print("Failed to read depth TIFF: \(error)")
+        return nil
     }
 }
 

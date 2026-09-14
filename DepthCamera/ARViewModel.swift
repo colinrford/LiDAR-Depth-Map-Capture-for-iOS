@@ -45,9 +45,9 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
     isProcessingPreview = true
     previewQueue.async { [weak self] in
       // DepthMapの処理と表示
-      let depthImage = depth.flatMap(ARViewModel.makeDepthImage)
+      let depthImage = depth.flatMap(makeDepthImage).flatMap { $0.rotate(radians: .pi/2) } // 画像を90度回転
       // ConfidenceMapの処理と表示
-      let confidenceImage = confidence.flatMap(ARViewModel.makeConfidenceImage)
+      let confidenceImage = confidence.flatMap(makeConfidenceImage).flatMap { $0.rotate(radians: .pi/2) }
 
       DispatchQueue.main.async {
         guard let self else { return }
@@ -173,62 +173,59 @@ func copyPixels<T>(_ buffer: CVPixelBuffer, as type: T.Type) -> PixelCopy<T>? {
   return PixelCopy(width: width, height: height, pixels: pixels)
 }
 
-extension ARViewModel {
-  // DepthMapを可視化する関数
-  static func makeDepthImage(_ depth: PixelCopy<Float32>) -> UIImage? {
-    var normalizedData = [UInt8](repeating: 0, count: depth.pixels.count * 4)
-    for (i, value) in depth.pixels.enumerated() {
-      // 深度を0-1の範囲に正規化（例：0-5メートルを想定）
-      let normalizedDepth = min(max(value / 5.0, 0.0), 1.0)
-      let pixel = UInt8(normalizedDepth * 255.0)
-      normalizedData[i * 4] = pixel     // R
-      normalizedData[i * 4 + 1] = pixel // G
-      normalizedData[i * 4 + 2] = pixel // B
-      normalizedData[i * 4 + 3] = 255   // A
-    }
-    return makeRotatedImage(rgba: &normalizedData, width: depth.width, height: depth.height)
+// DepthMapを可視化する関数
+/// Grayscale depth from 0 m (black) to 5 m (white), shared by the live preview and the gallery.
+func makeDepthImage(_ depth: PixelCopy<Float32>) -> UIImage? {
+  var normalizedData = [UInt8](repeating: 0, count: depth.pixels.count * 4)
+  for (i, value) in depth.pixels.enumerated() {
+    // 深度を0-1の範囲に正規化（例：0-5メートルを想定）
+    let normalizedDepth = min(max(value / 5.0, 0.0), 1.0)
+    let pixel = UInt8(normalizedDepth * 255.0)
+    normalizedData[i * 4] = pixel     // R
+    normalizedData[i * 4 + 1] = pixel // G
+    normalizedData[i * 4 + 2] = pixel // B
+    normalizedData[i * 4 + 3] = 255   // A
   }
+  return makeImage(rgba: &normalizedData, width: depth.width, height: depth.height)
+}
 
-  // ConfidenceMapを可視化する関数
-  static func makeConfidenceImage(_ confidence: PixelCopy<UInt8>) -> UIImage? {
-    var rgbaData = [UInt8](repeating: 0, count: confidence.pixels.count * 4)
-    for (i, value) in confidence.pixels.enumerated() {
-      let index = i * 4
-      // 信頼度に基づいて色を設定
-      switch value {
-      case 0:  // 信頼度なし
-        rgbaData[index] = 255    // R - 赤
-      case 1:  // 低信頼度
-        rgbaData[index] = 255    // R - 黄
-        rgbaData[index + 1] = 255  // G
-      case 2:  // 高信頼度
-        rgbaData[index + 1] = 255  // G - 緑
-      default:  // 最高信頼度
-        rgbaData[index + 2] = 255  // B - 青
-      }
-      rgbaData[index + 3] = 255   // A - 完全な不透明度
+// ConfidenceMapを可視化する関数
+func makeConfidenceImage(_ confidence: PixelCopy<UInt8>) -> UIImage? {
+  var rgbaData = [UInt8](repeating: 0, count: confidence.pixels.count * 4)
+  for (i, value) in confidence.pixels.enumerated() {
+    let index = i * 4
+    // 信頼度に基づいて色を設定
+    switch value {
+    case 0:  // 信頼度なし
+      rgbaData[index] = 255    // R - 赤
+    case 1:  // 低信頼度
+      rgbaData[index] = 255    // R - 黄
+      rgbaData[index + 1] = 255  // G
+    case 2:  // 高信頼度
+      rgbaData[index + 1] = 255  // G - 緑
+    default:  // 最高信頼度
+      rgbaData[index + 2] = 255  // B - 青
     }
-    return makeRotatedImage(rgba: &rgbaData, width: confidence.width, height: confidence.height)
+    rgbaData[index + 3] = 255   // A - 完全な不透明度
   }
+  return makeImage(rgba: &rgbaData, width: confidence.width, height: confidence.height)
+}
 
-  private static func makeRotatedImage(rgba: inout [UInt8], width: Int, height: Int) -> UIImage? {
-    // Keep the pointer valid for both creating the context and copying out the image
-    let cgImage = rgba.withUnsafeMutableBytes { bytes in
-      CGContext(
-        data: bytes.baseAddress,
-        width: width,
-        height: height,
-        bitsPerComponent: 8,
-        bytesPerRow: width * 4,
-        space: CGColorSpaceCreateDeviceRGB(),
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-      )?.makeImage()
-    }
-    guard let cgImage else { return nil }
-
-    // 画像を90度回転
-    return UIImage(cgImage: cgImage).rotate(radians: .pi/2)
+private func makeImage(rgba: inout [UInt8], width: Int, height: Int) -> UIImage? {
+  // Keep the pointer valid for both creating the context and copying out the image
+  let cgImage = rgba.withUnsafeMutableBytes { bytes in
+    CGContext(
+      data: bytes.baseAddress,
+      width: width,
+      height: height,
+      bitsPerComponent: 8,
+      bytesPerRow: width * 4,
+      space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )?.makeImage()
   }
+  guard let cgImage else { return nil }
+  return UIImage(cgImage: cgImage)
 }
 
 extension UIImage {

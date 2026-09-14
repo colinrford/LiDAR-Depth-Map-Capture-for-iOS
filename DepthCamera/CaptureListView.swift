@@ -338,8 +338,8 @@ struct CaptureDetailView: View {
     
     private func loadDepthImage() {
         DispatchQueue.global(qos: .userInitiated).async {
-            // UIImageは直接TIFFファイルを読み込める
-            if let depthImage = UIImage(contentsOfFile: capture.depthURL.path) {
+            if let depth = readDepthTIFF(at: capture.depthURL),
+               let depthImage = makeDepthImage(depth) {
                 DispatchQueue.main.async {
                     self.depthImage = depthImage
                 }
