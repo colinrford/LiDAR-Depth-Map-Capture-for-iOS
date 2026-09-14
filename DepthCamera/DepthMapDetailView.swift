@@ -7,7 +7,7 @@
 
 import SwiftUI
 import CoreGraphics
-import ImageIO
+import SwiftTiff
 
 struct DepthMapDetailView: View {
     let depthURL: URL
@@ -118,50 +118,24 @@ struct DepthMapDetailView: View {
     }
     
     private func loadDepthValuesFromTIFF() {
-        guard let imageSource = CGImageSourceCreateWithURL(depthURL as CFURL, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
-            return
-        }
-        
-        let width = cgImage.width
-        let height = cgImage.height
-        
-        // TIFFメタデータから深度情報を取得する試み
-        if let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] {
-            print("TIFF Properties: \(properties)")
-        }
-        
-        // 簡易的な実装：グレースケール値から深度を推定
-        // 実際のTIFF深度データの読み取りにはより詳細な実装が必要
-        depthData = Array(repeating: Array(repeating: Float(0), count: width), count: height)
-        
-        // ビットマップコンテキストを作成してピクセルデータを取得
-        let colorSpace = CGColorSpaceCreateDeviceGray()
-        let bytesPerPixel = 1
-        let bytesPerRow = bytesPerPixel * width
-        let bitsPerComponent = 8
-        
-        var pixelData = [UInt8](repeating: 0, count: width * height)
-        
-        guard let context = CGContext(data: &pixelData,
-                                    width: width,
-                                    height: height,
-                                    bitsPerComponent: bitsPerComponent,
-                                    bytesPerRow: bytesPerRow,
-                                    space: colorSpace,
-                                    bitmapInfo: CGImageAlphaInfo.none.rawValue) else {
-            return
-        }
-        
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
-        // グレースケール値を深度値に変換（0-5メートルの範囲と仮定）
-        for y in 0..<height {
-            for x in 0..<width {
-                let pixelIndex = y * width + x
-                let grayValue = Float(pixelData[pixelIndex]) / 255.0
-                depthData[y][x] = grayValue * 5.0 // 0-5メートルの範囲にマッピング
+        do {
+            let image = try TIFFReader.read(fromFile: depthURL.path)
+            guard let directory = image.fileDirectories.first else {
+                print("Depth TIFF has no image directory")
+                return
             }
+            let rasters = try directory.readRasters()
+            
+            // 32-bit float depth in meters, as written by writeDepthMapToTIFFWithLibTIFF
+            let values = (0..<rasters.height).map { y in
+                (0..<rasters.width).map { x in Float(rasters.firstPixelSample(x: x, y: y)) }
+            }
+            
+            DispatchQueue.main.async {
+                self.depthData = values
+            }
+        } catch {
+            print("Failed to read depth TIFF: \(error)")
         }
     }
     
