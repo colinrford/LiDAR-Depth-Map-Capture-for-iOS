@@ -8,7 +8,6 @@
 import ARKit
 import SwiftUI
 
-
 class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
   private var latestDepthMap: CVPixelBuffer?
   private var latestImage: CVPixelBuffer?
@@ -110,8 +109,6 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
     }
   }
 }
-
-
 
 extension ARViewModel {
   func resizePixelBuffer(
