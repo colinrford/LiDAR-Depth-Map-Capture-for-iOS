@@ -5,7 +5,6 @@
 //  Created by iori on 2024/11/27.
 //
 
-import SwiftUICore
 import SwiftUI
 
 
