@@ -6,6 +6,7 @@
 //
 
 import ARKit
+import SwiftUI
 
 
 class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
@@ -16,11 +17,6 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
   @Published var showDepthMap: Bool = true
   @Published var showConfidenceMap: Bool = true
   @Published var captureSuccessful: Bool = false
-  @Published var lastCapture: UIImage? = nil {
-    didSet {
-      print("lastCapture was set.")
-    }
-  }
   @Published var lastCaptureURL: URL?
   
   private var lastDepthUpdate: TimeInterval = 0
@@ -28,6 +24,9 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
   // Preview images are built off the main thread so ARKit's frames aren't held up
   private let previewQueue = DispatchQueue(label: "DepthCamera.preview", qos: .userInitiated)
   private var isProcessingPreview = false // main thread only
+  // Captures are written off the main thread so the UI keeps animating while saving
+  private let saveQueue = DispatchQueue(label: "DepthCamera.save", qos: .userInitiated)
+  private var captureCount = 0 // main thread only
 
   func session(_ session: ARSession, didUpdate frame: ARFrame) {
     latestDepthMap = frame.sceneDepth?.depthMap
@@ -64,51 +63,51 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
       return
     }
     
-    let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-    let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "yyyyMMdd"
-    let dateString = dateFormatter.string(from: Date())
-    let dateDirURL = documentsDir.appendingPathComponent(dateString)
-    
-    do {
-      try FileManager.default.createDirectory(at: dateDirURL, withIntermediateDirectories: true, attributes: nil)
-    } catch {
-      print("Failed to create directory: \(error)")
-      return
-    }
-    
-    let timestamp = Date().timeIntervalSince1970
-    let depthFileURL = dateDirURL.appendingPathComponent("\(timestamp)_depth.tiff")
-    let imageFileURL = dateDirURL.appendingPathComponent("\(timestamp)_image.jpg")
-    
-    guard writeDepthMapToTIFFWithLibTIFF(depthMap: depthMap, url: depthFileURL) else {
-      print("Failed to save depth map to \(depthFileURL)")
-      return
-    }
-    saveImage(image: image, url: imageFileURL)
-    
-    
-    
-    
-    
-    let uiImage = UIImage(ciImage: CIImage(cvPixelBuffer: image))
-    
-    
-    DispatchQueue.main.async {
-      self.lastCapture = uiImage
-      self.lastCaptureURL = imageFileURL
-      self.captureSuccessful = true
+    saveQueue.async { [weak self] in
+      let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyyMMdd"
+      let dateString = dateFormatter.string(from: Date())
+      let dateDirURL = documentsDir.appendingPathComponent(dateString)
       
-      // Reset after animation
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        self.captureSuccessful = false
+      do {
+        try FileManager.default.createDirectory(at: dateDirURL, withIntermediateDirectories: true, attributes: nil)
+      } catch {
+        print("Failed to create directory: \(error)")
+        return
+      }
+      
+      let timestamp = Date().timeIntervalSince1970
+      let depthFileURL = dateDirURL.appendingPathComponent("\(timestamp)_depth.tiff")
+      let imageFileURL = dateDirURL.appendingPathComponent("\(timestamp)_image.jpg")
+      
+      guard writeDepthMapToTIFFWithLibTIFF(depthMap: depthMap, url: depthFileURL) else {
+        print("Failed to save depth map to \(depthFileURL)")
+        return
+      }
+      saveImage(image: image, url: imageFileURL)
+      
+      print("Depth map saved to \(depthFileURL)")
+      print("Image saved to \(imageFileURL)")
+      
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.lastCaptureURL = imageFileURL
+        self.captureCount += 1
+        let capture = self.captureCount
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+          self.captureSuccessful = true
+        }
+        
+        // Reset after animation, unless another capture has finished since
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          guard capture == self.captureCount else { return }
+          withAnimation(.easeOut(duration: 0.3)) {
+            self.captureSuccessful = false
+          }
+        }
       }
     }
-    
-    
-    
-    print("Depth map saved to \(depthFileURL)")
-    print("Image saved to \(imageFileURL)")
   }
 }
 

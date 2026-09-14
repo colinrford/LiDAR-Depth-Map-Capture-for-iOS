@@ -163,28 +163,25 @@ struct ContentView : View {
                         )
                         .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 10)
                         .frame(width: width * 0.9, height: height * 0.9)
-                        .scaleEffect(0.95)
-                    
-                    // Success indicator overlay - centered checkmark
-                    if arViewModel.captureSuccessful {
-                        ZStack {
-                            // Background blur effect
-                            Color.white.opacity(0.2)
-                                .ignoresSafeArea()
-                                .blur(radius: 50)
-                                .transition(.opacity)
-                            
-                            // Checkmark animation
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 80, weight: .light))
-                                .foregroundColor(Color.green)
-                                .shadow(color: Color.green.opacity(0.5), radius: 20, x: 0, y: 0)
-                                .scaleEffect(arViewModel.captureSuccessful ? 1.0 : 0.5)
-                                .opacity(arViewModel.captureSuccessful ? 1.0 : 0.0)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.6), value: arViewModel.captureSuccessful)
+                        // Success indicator overlay - centered checkmark.
+                        // An overlay, so showing it doesn't shift the rest of the layout.
+                        .overlay {
+                            if arViewModel.captureSuccessful {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: previewCornerRadius)
+                                        .fill(Color.white.opacity(0.2))
+                                        .transition(.opacity)
+                                    
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 80, weight: .light))
+                                        .foregroundColor(Color.green)
+                                        .shadow(color: Color.green.opacity(0.5), radius: 20, x: 0, y: 0)
+                                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                                }
+                                .allowsHitTesting(false)
+                            }
                         }
-                        .allowsHitTesting(false)
-                    }
+                        .scaleEffect(0.95)
                     
                     CaptureButtonPanelView(model: arViewModel, width: geometry.size.width)
                         .padding(.bottom, 30)
@@ -245,9 +242,12 @@ func writeDepthMapToTIFFWithLibTIFF(depthMap: CVPixelBuffer, url: URL) -> Bool {
     return true
 }
 
+// Creating a CIContext is expensive, so reuse one for every capture
+private let jpegContext = CIContext()
+
 func saveImage(image: CVPixelBuffer, url: URL) {
     let ciImage = CIImage(cvPixelBuffer: image)
-    let context = CIContext()
+    let context = jpegContext
     if let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
        let jpegData = context.jpegRepresentation(of: ciImage, colorSpace: colorSpace, options: [:]) {
         do {
