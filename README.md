@@ -1,5 +1,16 @@
 # LiDAR Depth Map Capture for iOS
 
+Note this is a fork of the original repository.
+
+In this fork:
+- we replace usage of [`tiff-ios`](https://github.com/ngageoint/tiff-ios?tab=readme-ov-file) with [`SwiftTiff`](https://github.com/colinrford/SwiftTiff)
+- make minor adjustments that improved app performance
+- add a "Done" button in the Gallery to allow the user to return to the camera
+
+Below is the original text of the Readme that this repo was forked from.
+
+---
+
 This iOS app is designed for professional users who need to capture full-resolution depth maps using the LiDAR scanner on their iPhone or iPad. It addresses the issue of depth maps being scaled down to 8-bit when using the standard iOS libraries, allowing you to capture and save depth maps with their original precision.
 
 App Store : [https://apps.apple.com/us/app/depth-camera-raw/id6557075309](https://apps.apple.com/us/app/depth-camera-raw/id6557075309)
