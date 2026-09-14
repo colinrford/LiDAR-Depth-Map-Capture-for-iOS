@@ -1,0 +1,15 @@
+{
+  "originHash" : "360705163c02847b740de542e671932efeacf22e210976930e543e290c81c123",
+  "pins" : [
+    {
+      "identity" : "swifttiff",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/colinrford/SwiftTiff",
+      "state" : {
+        "branch" : "main",
+        "revision" : "5a96e3e85bba4e8baf6ca3c073177af2da2c73cd"
+      }
+    }
+  ],
+  "version" : 3
+}

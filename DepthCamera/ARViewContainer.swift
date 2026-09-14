@@ -9,7 +9,6 @@ import SwiftUI
 import ARKit
 import RealityKit
 
-
 struct ARViewContainer: UIViewRepresentable {
     @ObservedObject var arViewModel: ARViewModel
     
@@ -25,16 +24,10 @@ struct ARViewContainer: UIViewRepresentable {
         return nil
     }
     
-    
-    
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
         
         let configuration = ARWorldTrackingConfiguration()
-        
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
-            configuration.sceneReconstruction = .meshWithClassification
-        }
         
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
                    configuration.frameSemantics.insert(.sceneDepth)

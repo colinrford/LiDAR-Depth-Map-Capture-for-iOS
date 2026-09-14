@@ -7,7 +7,7 @@
 
 import SwiftUI
 import CoreGraphics
-import ImageIO
+import SwiftTiff
 
 struct DepthMapDetailView: View {
     let depthURL: URL
@@ -105,62 +105,16 @@ struct DepthMapDetailView: View {
     
     private func loadDepthData() {
         DispatchQueue.global(qos: .userInitiated).async {
-            // まず表示用の画像を読み込む
-            if let image = UIImage(contentsOfFile: depthURL.path) {
-                DispatchQueue.main.async {
-                    self.depthImage = image
-                }
+            // TIFFからDepthデータを読み込む
+            guard let depth = readDepthTIFF(at: depthURL) else { return }
+            let image = makeDepthImage(depth)
+            let values = stride(from: 0, to: depth.pixels.count, by: depth.width).map {
+                Array(depth.pixels[$0..<$0 + depth.width])
             }
             
-            // TIFFからDepthデータを読み込む
-            loadDepthValuesFromTIFF()
-        }
-    }
-    
-    private func loadDepthValuesFromTIFF() {
-        guard let imageSource = CGImageSourceCreateWithURL(depthURL as CFURL, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
-            return
-        }
-        
-        let width = cgImage.width
-        let height = cgImage.height
-        
-        // TIFFメタデータから深度情報を取得する試み
-        if let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] {
-            print("TIFF Properties: \(properties)")
-        }
-        
-        // 簡易的な実装：グレースケール値から深度を推定
-        // 実際のTIFF深度データの読み取りにはより詳細な実装が必要
-        depthData = Array(repeating: Array(repeating: Float(0), count: width), count: height)
-        
-        // ビットマップコンテキストを作成してピクセルデータを取得
-        let colorSpace = CGColorSpaceCreateDeviceGray()
-        let bytesPerPixel = 1
-        let bytesPerRow = bytesPerPixel * width
-        let bitsPerComponent = 8
-        
-        var pixelData = [UInt8](repeating: 0, count: width * height)
-        
-        guard let context = CGContext(data: &pixelData,
-                                    width: width,
-                                    height: height,
-                                    bitsPerComponent: bitsPerComponent,
-                                    bytesPerRow: bytesPerRow,
-                                    space: colorSpace,
-                                    bitmapInfo: CGImageAlphaInfo.none.rawValue) else {
-            return
-        }
-        
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
-        // グレースケール値を深度値に変換（0-5メートルの範囲と仮定）
-        for y in 0..<height {
-            for x in 0..<width {
-                let pixelIndex = y * width + x
-                let grayValue = Float(pixelData[pixelIndex]) / 255.0
-                depthData[y][x] = grayValue * 5.0 // 0-5メートルの範囲にマッピング
+            DispatchQueue.main.async {
+                self.depthImage = image
+                self.depthData = values
             }
         }
     }
@@ -204,6 +158,31 @@ struct DepthMapDetailView: View {
         }
         
         depthValue = depthData[pixelY][pixelX]
+    }
+}
+
+/// Reads a depth TIFF (32-bit float meters, as written by writeDepthMapToTIFFWithLibTIFF).
+/// Don't display these files with UIImage directly: ImageIO maps 0–1 to black–white and
+/// clips everything past 1 m to white.
+func readDepthTIFF(at url: URL) -> PixelCopy<Float32>? {
+    do {
+        let image = try TIFFReader.read(fromFile: url.path)
+        guard let directory = image.fileDirectories.first else {
+            print("Depth TIFF has no image directory")
+            return nil
+        }
+        let rasters = try directory.readRasters()
+        var pixels = [Float32]()
+        pixels.reserveCapacity(rasters.width * rasters.height)
+        for y in 0..<rasters.height {
+            for x in 0..<rasters.width {
+                pixels.append(Float32(rasters.firstPixelSample(x: x, y: y)))
+            }
+        }
+        return PixelCopy(width: rasters.width, height: rasters.height, pixels: pixels)
+    } catch {
+        print("Failed to read depth TIFF: \(error)")
+        return nil
     }
 }
 

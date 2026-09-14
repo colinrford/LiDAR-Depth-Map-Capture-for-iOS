@@ -5,7 +5,7 @@ import RealityKit
 import ImageIO
 import MobileCoreServices
 import CoreGraphics
-import tiff_ios
+import SwiftTiff
 
 
 
@@ -163,28 +163,25 @@ struct ContentView : View {
                         )
                         .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 10)
                         .frame(width: width * 0.9, height: height * 0.9)
-                        .scaleEffect(0.95)
-                    
-                    // Success indicator overlay - centered checkmark
-                    if arViewModel.captureSuccessful {
-                        ZStack {
-                            // Background blur effect
-                            Color.white.opacity(0.2)
-                                .ignoresSafeArea()
-                                .blur(radius: 50)
-                                .transition(.opacity)
-                            
-                            // Checkmark animation
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 80, weight: .light))
-                                .foregroundColor(Color.green)
-                                .shadow(color: Color.green.opacity(0.5), radius: 20, x: 0, y: 0)
-                                .scaleEffect(arViewModel.captureSuccessful ? 1.0 : 0.5)
-                                .opacity(arViewModel.captureSuccessful ? 1.0 : 0.0)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.6), value: arViewModel.captureSuccessful)
+                        // Success indicator overlay - centered checkmark.
+                        // An overlay, so showing it doesn't shift the rest of the layout.
+                        .overlay {
+                            if arViewModel.captureSuccessful {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: previewCornerRadius)
+                                        .fill(Color.white.opacity(0.2))
+                                        .transition(.opacity)
+                                    
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 80, weight: .light))
+                                        .foregroundColor(Color.green)
+                                        .shadow(color: Color.green.opacity(0.5), radius: 20, x: 0, y: 0)
+                                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                                }
+                                .allowsHitTesting(false)
+                            }
                         }
-                        .allowsHitTesting(false)
-                    }
+                        .scaleEffect(0.95)
                     
                     CaptureButtonPanelView(model: arViewModel, width: geometry.size.width)
                         .padding(.bottom, 30)
@@ -207,50 +204,50 @@ func writeDepthMapToTIFFWithLibTIFF(depthMap: CVPixelBuffer, url: URL) -> Bool {
     }
     let bytesPerRow = CVPixelBufferGetBytesPerRow(depthMap)
     
-    guard let rasters = TIFFRasters(width: Int32(width), andHeight: Int32(height), andSamplesPerPixel: 1, andSingleBitsPerSample: 32) else {
-        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
-        return false
-    }
+    var rasters = TIFFRasters(width: width, height: height, samplesPerPixel: 1, singleBitsPerSample: 32)
     
     for y in 0..<height {
         let pixelBytes = baseAddress.advanced(by: y * bytesPerRow)
         let pixelBuffer = UnsafeBufferPointer<Float>(start: pixelBytes.assumingMemoryBound(to: Float.self), count: width)
         for x in 0..<width {
-            rasters.setFirstPixelSampleAtX(Int32(x), andY: Int32(y), withValue: NSDecimalNumber(value: pixelBuffer[x]))
+            rasters.setFirstPixelSample(x: x, y: y, value: Double(pixelBuffer[x]))
         }
     }
     
     CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
     
-    let rowsPerStrip = UInt16(rasters.calculateRowsPerStrip(withPlanarConfiguration: Int32(TIFF_PLANAR_CONFIGURATION_CHUNKY)))
+    let rowsPerStrip = rasters.calculateRowsPerStrip(planarConfiguration: .chunky)
     
-    guard let directory = TIFFFileDirectory() else {
-        return false
-    }
-    directory.setImageWidth(UInt16(width))
-    directory.setImageHeight(UInt16(height))
+    var directory = TIFFFileDirectory()
+    directory.setImageWidth(width)
+    directory.setImageHeight(height)
     directory.setBitsPerSampleAsSingleValue(32)
-    directory.setCompression(UInt16(TIFF_COMPRESSION_NO))
-    directory.setPhotometricInterpretation(UInt16(TIFF_PHOTOMETRIC_INTERPRETATION_BLACK_IS_ZERO))
+    directory.setCompression(.none)
+    directory.setPhotometricInterpretation(.blackIsZero)
     directory.setSamplesPerPixel(1)
     directory.setRowsPerStrip(rowsPerStrip)
-    directory.setPlanarConfiguration(UInt16(TIFF_PLANAR_CONFIGURATION_CHUNKY))
-    directory.setSampleFormatAsSingleValue(UInt16(TIFF_SAMPLE_FORMAT_FLOAT))
+    directory.setPlanarConfiguration(.chunky)
+    directory.setSampleFormatAsSingleValue(.float)
     directory.writeRasters = rasters
     
-    guard let tiffImage = TIFFImage() else {
+    let tiffImage = TIFFImage(fileDirectory: directory)
+    
+    do {
+        try TIFFWriter.write(image: tiffImage, to: url.path)
+    } catch {
+        print("Failed to write depth TIFF: \(error)")
         return false
     }
-    tiffImage.addFileDirectory(directory)
-    
-    TIFFWriter.writeTiff(withFile: url.path, andImage: tiffImage)
     
     return true
 }
 
+// Creating a CIContext is expensive, so reuse one for every capture
+private let jpegContext = CIContext()
+
 func saveImage(image: CVPixelBuffer, url: URL) {
     let ciImage = CIImage(cvPixelBuffer: image)
-    let context = CIContext()
+    let context = jpegContext
     if let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
        let jpegData = context.jpegRepresentation(of: ciImage, colorSpace: colorSpace, options: [:]) {
         do {

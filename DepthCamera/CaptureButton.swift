@@ -5,7 +5,6 @@
 //  Created by iori on 2024/11/27.
 //
 
-import SwiftUICore
 import SwiftUI
 
 
@@ -21,7 +20,7 @@ struct CaptureButton: View {
     
     @ObservedObject var model: ARViewModel
     @State private var isPressed = false
-    @State private var showPulse = false
+    @State private var pulseCount = 0
     
     init(model: ARViewModel) {
         self.model = model
@@ -30,15 +29,19 @@ struct CaptureButton: View {
     
     var body: some View {
         ZStack {
-            // Pulse animation effect
-            if showPulse {
-                Circle()
-                    .stroke(Color.white.opacity(0.8), lineWidth: 2)
-                    .frame(width: CaptureButton.outerDiameter + 20, height: CaptureButton.outerDiameter + 20)
-                    .scaleEffect(showPulse ? 1.5 : 1.0)
-                    .opacity(showPulse ? 0 : 1)
-                    .animation(.easeOut(duration: 0.6), value: showPulse)
-            }
+            // Pulse animation effect, played each time pulseCount changes
+            Circle()
+                .stroke(Color.white.opacity(0.8), lineWidth: 2)
+                .frame(width: CaptureButton.outerDiameter + 20, height: CaptureButton.outerDiameter + 20)
+                .keyframeAnimator(initialValue: 0.0, trigger: pulseCount) { circle, progress in
+                    circle
+                        .scaleEffect(1.0 + 0.5 * progress)
+                        .opacity(progress == 0 ? 0 : 1 - progress)
+                } keyframes: { _ in
+                    MoveKeyframe(0.001)
+                    LinearKeyframe(1.0, duration: 0.6, timingCurve: .easeOut)
+                }
+                .allowsHitTesting(false)
             
             Button(action: {
                 // Haptic feedback
@@ -47,8 +50,8 @@ struct CaptureButton: View {
                 
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     isPressed = true
-                    showPulse = true
                 }
+                pulseCount += 1
                 
                 model.saveDepthMap()
                 
@@ -56,10 +59,6 @@ struct CaptureButton: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                         isPressed = false
                     }
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    showPulse = false
                 }
             }, label: {
                 ManualCaptureButtonView()
