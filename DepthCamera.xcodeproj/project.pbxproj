@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		71C3B3AD7A98BA3561007192 /* Pods_DepthCameraTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C5E46324A2B9674F59F1F8C /* Pods_DepthCameraTests.framework */; };
+		7A3B5DBA60EB24A5D1923925 /* SwiftTiff in Frameworks */ = {isa = PBXBuildFile; productRef = 530365DA678F794900DA2CE3 /* SwiftTiff */; };
 		8943625B2DF38CA900EC952D /* CaptureFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8943625A2DF38CA900EC952D /* CaptureFileManager.swift */; };
 		8943625D2DF38CBA00EC952D /* CaptureListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8943625C2DF38CBA00EC952D /* CaptureListView.swift */; };
 		8943625F2DF3919500EC952D /* DepthMapDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8943625E2DF3919500EC952D /* DepthMapDetailView.swift */; };
@@ -91,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DB0AE426B16D9FA02B997FED /* Pods_DepthCamera.framework in Frameworks */,
+				7A3B5DBA60EB24A5D1923925 /* SwiftTiff in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +229,9 @@
 			dependencies = (
 			);
 			name = DepthCamera;
+			packageProductDependencies = (
+				530365DA678F794900DA2CE3 /* SwiftTiff */,
+			);
 			productName = DepthCamera;
 			productReference = 89B6171A2B14740A00280111 /* DepthCamera.app */;
 			productType = "com.apple.product-type.application";
@@ -302,6 +307,9 @@
 				Base,
 			);
 			mainGroup = 89B617112B14740A00280111;
+			packageReferences = (
+				5F30770FF7BFEDF15A615596 /* XCRemoteSwiftPackageReference "SwiftTiff" */,
+			);
 			productRefGroup = 89B6171B2B14740A00280111 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -861,6 +869,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5F30770FF7BFEDF15A615596 /* XCRemoteSwiftPackageReference "SwiftTiff" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/colinrford/SwiftTiff";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		530365DA678F794900DA2CE3 /* SwiftTiff */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5F30770FF7BFEDF15A615596 /* XCRemoteSwiftPackageReference "SwiftTiff" */;
+			productName = SwiftTiff;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 89B617122B14740A00280111 /* Project object */;
 }
