@@ -32,10 +32,6 @@ struct ARViewContainer: UIViewRepresentable {
         
         let configuration = ARWorldTrackingConfiguration()
         
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
-            configuration.sceneReconstruction = .meshWithClassification
-        }
-        
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
                    configuration.frameSemantics.insert(.sceneDepth)
                }
