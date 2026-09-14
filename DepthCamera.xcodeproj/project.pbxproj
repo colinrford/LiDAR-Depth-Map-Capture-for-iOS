@@ -76,7 +76,6 @@
 		89B617392B14740B00280111 /* DepthCameraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthCameraUITests.swift; sourceTree = "<group>"; };
 		89B6173B2B14740B00280111 /* DepthCameraUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthCameraUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		89B6174A2B14802900280111 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		89B8A9712BB2D33D00FD7106 /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
 		89DE42E12CB3DECF00D43C0A /* color 2.glb */ = {isa = PBXFileReference; lastKnownFileType = file; path = "color 2.glb"; sourceTree = "<group>"; };
 		8F9F679CF8B7EE44C3DAACAC /* Pods_DepthCamera_DepthCameraUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_DepthCamera_DepthCameraUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC19CA33E5E5796BB47E68BF /* Pods-DepthCameraTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DepthCameraTests.release.xcconfig"; path = "Target Support Files/Pods-DepthCameraTests/Pods-DepthCameraTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -140,7 +139,6 @@
 		89B6171C2B14740A00280111 /* DepthCamera */ = {
 			isa = PBXGroup;
 			children = (
-				89B8A9712BB2D33D00FD7106 /* Bridging-Header.h */,
 				89B6174A2B14802900280111 /* Info.plist */,
 				899DD7042CF71285004FE108 /* ARViewContainer.swift */,
 				899DD7022CF71263004FE108 /* ARViewModel.swift */,
@@ -677,7 +675,6 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "$(SRCROOT)/$(PROJECT)/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -729,7 +726,6 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "$(SRCROOT)/$(PROJECT)/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};

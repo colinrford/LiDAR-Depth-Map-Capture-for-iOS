@@ -5,7 +5,7 @@ import RealityKit
 import ImageIO
 import MobileCoreServices
 import CoreGraphics
-import tiff_ios
+import SwiftTiff
 
 
 
@@ -207,43 +207,40 @@ func writeDepthMapToTIFFWithLibTIFF(depthMap: CVPixelBuffer, url: URL) -> Bool {
     }
     let bytesPerRow = CVPixelBufferGetBytesPerRow(depthMap)
     
-    guard let rasters = TIFFRasters(width: Int32(width), andHeight: Int32(height), andSamplesPerPixel: 1, andSingleBitsPerSample: 32) else {
-        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
-        return false
-    }
+    var rasters = TIFFRasters(width: width, height: height, samplesPerPixel: 1, singleBitsPerSample: 32)
     
     for y in 0..<height {
         let pixelBytes = baseAddress.advanced(by: y * bytesPerRow)
         let pixelBuffer = UnsafeBufferPointer<Float>(start: pixelBytes.assumingMemoryBound(to: Float.self), count: width)
         for x in 0..<width {
-            rasters.setFirstPixelSampleAtX(Int32(x), andY: Int32(y), withValue: NSDecimalNumber(value: pixelBuffer[x]))
+            rasters.setFirstPixelSample(x: x, y: y, value: Double(pixelBuffer[x]))
         }
     }
     
     CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
     
-    let rowsPerStrip = UInt16(rasters.calculateRowsPerStrip(withPlanarConfiguration: Int32(TIFF_PLANAR_CONFIGURATION_CHUNKY)))
+    let rowsPerStrip = rasters.calculateRowsPerStrip(planarConfiguration: .chunky)
     
-    guard let directory = TIFFFileDirectory() else {
-        return false
-    }
-    directory.setImageWidth(UInt16(width))
-    directory.setImageHeight(UInt16(height))
+    var directory = TIFFFileDirectory()
+    directory.setImageWidth(width)
+    directory.setImageHeight(height)
     directory.setBitsPerSampleAsSingleValue(32)
-    directory.setCompression(UInt16(TIFF_COMPRESSION_NO))
-    directory.setPhotometricInterpretation(UInt16(TIFF_PHOTOMETRIC_INTERPRETATION_BLACK_IS_ZERO))
+    directory.setCompression(.none)
+    directory.setPhotometricInterpretation(.blackIsZero)
     directory.setSamplesPerPixel(1)
     directory.setRowsPerStrip(rowsPerStrip)
-    directory.setPlanarConfiguration(UInt16(TIFF_PLANAR_CONFIGURATION_CHUNKY))
-    directory.setSampleFormatAsSingleValue(UInt16(TIFF_SAMPLE_FORMAT_FLOAT))
+    directory.setPlanarConfiguration(.chunky)
+    directory.setSampleFormatAsSingleValue(.float)
     directory.writeRasters = rasters
     
-    guard let tiffImage = TIFFImage() else {
+    let tiffImage = TIFFImage(fileDirectory: directory)
+    
+    do {
+        try TIFFWriter.write(image: tiffImage, to: url.path)
+    } catch {
+        print("Failed to write depth TIFF: \(error)")
         return false
     }
-    tiffImage.addFileDirectory(directory)
-    
-    TIFFWriter.writeTiff(withFile: url.path, andImage: tiffImage)
     
     return true
 }
