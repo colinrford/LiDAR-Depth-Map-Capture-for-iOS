@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct CaptureListView: View {
+    @Environment(\.dismiss) var dismiss
     @StateObject private var fileManager = CaptureFileManager()
     @State private var selectedCapture: CaptureItem?
     @State private var showingShareSheet = false
@@ -74,6 +75,12 @@ struct CaptureListView: View {
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search captures")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: fileManager.loadCaptures) {
                         Image(systemName: "arrow.clockwise")
