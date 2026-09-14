@@ -69,7 +69,10 @@ class ARViewModel: NSObject, ARSessionDelegate, ObservableObject {
     let depthFileURL = dateDirURL.appendingPathComponent("\(timestamp)_depth.tiff")
     let imageFileURL = dateDirURL.appendingPathComponent("\(timestamp)_image.jpg")
     
-    writeDepthMapToTIFFWithLibTIFF(depthMap: depthMap, url: depthFileURL)
+    guard writeDepthMapToTIFFWithLibTIFF(depthMap: depthMap, url: depthFileURL) else {
+      print("Failed to save depth map to \(depthFileURL)")
+      return
+    }
     saveImage(image: image, url: imageFileURL)
     
     
